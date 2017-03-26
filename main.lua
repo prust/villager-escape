@@ -34,9 +34,12 @@ function love.load()
     width = 5,
     height = 50,
     score = 0,
-    controls = 'arrow_keys'
+    controls = 'mouse' -- arrow_keys
   }
   table.insert(players, player_2)
+
+  love.mouse.setY(height / 2)
+  love.mouse.setVisible(false)
 
   -- local player_3 = {
   --   x = padding * 2,
@@ -115,6 +118,8 @@ function love.update(dt)
       elseif love.keyboard.isDown('s') then
         goal_y = player.y + keyboard_speed * dt
       end
+    elseif player.controls == 'mouse' then
+      goal_y = love.mouse.getY()
     else
       print('Warning: controls "' .. player.controls .. '" not valid or input device not connected')
     end
