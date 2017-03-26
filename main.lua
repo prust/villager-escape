@@ -23,7 +23,8 @@ function love.load()
     y = height / 2,
     width = 5,
     height = 100,
-    score = 0
+    score = 0,
+    controls = 'wasd'
   }
   table.insert(players, player_1)
 
@@ -32,17 +33,19 @@ function love.load()
     y = height / 2,
     width = 5,
     height = 50,
-    score = 0
+    score = 0,
+    controls = 'arrow_keys'
   }
   table.insert(players, player_2)
 
-  local player_3 = {
-    x = padding * 2,
-    y = height / 2,
-    width = 5,
-    height = 200
-  }
-  table.insert(players, player_3)
+  -- local player_3 = {
+  --   x = padding * 2,
+  --   y = height / 2,
+  --   width = 5,
+  --   height = 200,
+  --   controls = 'controller'
+  -- }
+  -- table.insert(players, player_3)
 
   for i, player in ipairs(players) do
     world:add(player, player.x, player.y, player.width, player.height)
@@ -91,23 +94,35 @@ function love.update(dt)
     ball.x = width / 2
   end
 
-  local min = 0
-  local max = height
-  if joystick_1 then
-    players[1].y = clamp(players[1].y + paddle_speed * dt * joystick_1:getGamepadAxis("lefty"), min, height - players[3].height)
-    world:move(players[1], players[1].x, players[1].y)
-  end
-  if joystick_2 then
-    players[3].y = clamp(players[3].y + paddle_speed * dt * joystick_2:getGamepadAxis("lefty"), min, height - players[3].height)
-    world:move(players[3], players[3].x, players[3].y)
-  end
-  if love.keyboard.isDown('up') then
-    players[2].y = clamp(players[2].y - keyboard_speed * dt, min, height - players[2].height)
-    world:move(players[2], players[2].x, players[2].y)
-  end
-  if love.keyboard.isDown('down') then
-    players[2].y = clamp(players[2].y + keyboard_speed * dt, min, height - players[2].height)
-    world:move(players[2], players[2].x, players[2].y)
+  for i, player in ipairs(players) do
+    local min = 0
+    local max = height - player.height
+
+    local goal_y;
+    if player.controls == 'controller' and joystick_1 then
+      goal_y = player.y + paddle_speed * dt * joystick_1:getGamepadAxis("lefty")
+    elseif player.controls == 'controller_2' and joystick_2 then
+      goal_y = player.y + paddle_speed * dt * joystick_2:getGamepadAxis("lefty")
+    elseif player.controls == 'arrow_keys' then
+      if love.keyboard.isDown('up') then
+        goal_y = player.y - keyboard_speed * dt
+      elseif love.keyboard.isDown('down') then
+        goal_y = player.y + keyboard_speed * dt
+      end
+    elseif player.controls == 'wasd' then
+      if love.keyboard.isDown('w') then
+        goal_y = player.y - keyboard_speed * dt
+      elseif love.keyboard.isDown('s') then
+        goal_y = player.y + keyboard_speed * dt
+      end
+    else
+      print('Warning: controls "' .. player.controls .. '" not valid or input device not connected')
+    end
+
+    if goal_y then
+      player.y = clamp(goal_y, min, max)
+      world:move(player, player.x, player.y)
+    end
   end
 end
 
