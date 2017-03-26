@@ -74,9 +74,13 @@ function love.load()
 end
 
 function love.update(dt)
-  local actualX, actualY, cols, len = world:move(ball, ball.x + dt * ball.dx, ball.y + dt * ball.dy, ballBumpFilter)
+  -- move ball
+  local goal_x = ball.x + dt * ball.dx
+  local goal_y = ball.y + dt * ball.dy
+  local actualX, actualY, cols, len = world:move(ball, goal_x, goal_y, ballBumpFilter)
   ball.x = actualX
   ball.y = actualY
+
   if #cols > 0 then
     local norm = cols[1].normal
       if norm.x == 1 or norm.x == -1 then
@@ -95,8 +99,10 @@ function love.update(dt)
       players[1].score = players[1].score + 1
     end
     ball.x = width / 2
+    world:update(ball, ball.x, ball.y)
   end
 
+  -- move players
   for i, player in ipairs(players) do
     local min = 0
     local max = height - player.height
@@ -125,8 +131,15 @@ function love.update(dt)
     end
 
     if goal_y then
-      player.y = clamp(goal_y, min, max)
-      world:move(player, player.x, player.y)
+      goal_y = clamp(goal_y, min, max)
+      local actualX, actualY, cols, len = world:move(player, player.x, goal_y)
+      player.y = actualY
+
+      -- not sure if this is necessary, but it seems like a healthy precaution
+      if clamp(actualY, min, max) ~= actualY then
+        player.y = clamp(actualY, min, max)
+        world:update(player, player.x, player.y)
+      end
     end
   end
 end
