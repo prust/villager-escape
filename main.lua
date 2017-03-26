@@ -7,6 +7,26 @@ paddle_speed = 500
 keyboard_speed = 500
 hud_height = 100
 players = {}
+bricks = {
+  0, 0, 0, 1, 1, 1, 0, 0, 0,
+  0, 0, 0, 1, 1, 1, 0, 0, 0,
+  0, 1, 1, 1, 1, 1, 1, 1, 0,
+  0, 0, 0, 1, 1, 1, 0, 0, 0,
+  0, 0, 0, 1, 1, 1, 0, 0, 0,
+}
+num_h_bricks = 9
+brick_height = 20
+brick_width = 75
+brick_spacing = 3
+bricks_left_margin = 300
+bricks_top_margin = 300
+
+function getBrickXY(ix)
+  ix = ix - 1 -- b/c Lua is 1-based
+  local y = math.floor(ix / num_h_bricks)
+  local x = ix % num_h_bricks
+  return bricks_left_margin + x * (brick_width + brick_spacing), bricks_top_margin + y * (brick_height + brick_spacing)
+end
 
 local ballBumpFilter = function(item, other)
   return 'bounce'
@@ -24,9 +44,10 @@ function love.load()
     x = padding,
     y = height / 2,
     width = 10,
-    height = 100,
+    height = 200,
     score = 0,
-    controls = 'wasd'
+    controls = 'controller_2',
+    item_type = 'paddle'
   }
   table.insert(players, player_1)
 
@@ -34,9 +55,10 @@ function love.load()
     x = width - padding - 10, -- paddle_width
     y = height / 2,
     width = 10,
-    height = 50,
+    height = 150,
     score = 0,
-    controls = 'mouse' -- arrow_keys
+    controls = 'controller', -- arrow_keys
+    item_type = 'paddle'
   }
   table.insert(players, player_2)
 
@@ -45,17 +67,38 @@ function love.load()
 
   love.graphics.setFont(love.graphics.newFont(64))
 
-  -- local player_3 = {
-  --   x = padding * 2,
-  --   y = height / 2,
-  --   width = 5,
-  --   height = 200,
-  --   controls = 'controller'
-  -- }
-  -- table.insert(players, player_3)
+  local player_3 = {
+    x = padding * 2,
+    y = height / 2,
+    width = 10,
+    height = 150,
+    controls = 'mouse',
+    item_type = 'paddle'
+  }
+  table.insert(players, player_3)
+
+  local player_4 = {
+    x = width - padding * 2,
+    y = height / 2,
+    width = 10,
+    height = 100,
+    controls = 'arrow_keys',
+    item_type = 'paddle'
+  }
+  table.insert(players, player_4)
 
   for i, player in ipairs(players) do
     world:add(player, player.x, player.y, player.width, player.height)
+  end
+
+  -- add bricks
+  for i, brick in ipairs(bricks) do
+    if brick ~= 0 then
+      local x, y = getBrickXY(i)
+      bricks[i] = {item_type = 'brick', brick_type = brick, ix = i, x = x, y = y, width = brick_width, height = brick_height}
+      brick = bricks[i]
+      world:add(brick, brick.x, brick.y, brick.width, brick.height)
+    end
   end
 
   -- add invisible top & bottom walls
@@ -86,12 +129,22 @@ function love.update(dt)
   ball.y = actualY
 
   if #cols > 0 then
+    if cols[1].other.item_type == 'brick' then
+      local brick = cols[1].other
+      world:remove(brick)
+      bricks[brick.ix] = 0
+    end
     local norm = cols[1].normal
       if norm.x == 1 or norm.x == -1 then
         ball.dx = -ball.dx
       end
       if norm.y == 1 or norm.y == -1 then
         ball.dy = -ball.dy
+      end
+
+      -- the paddle's vertical speed affects the ball's vert speed
+      if cols[1].other.item_type == 'paddle' then
+        ball.dy = clamp(ball.dy + cols[1].other.dy, -6 * speed, 6 * speed)
       end
   end
 
@@ -103,6 +156,7 @@ function love.update(dt)
       players[1].score = players[1].score + 1
     end
     ball.x = width / 2
+    ball.dy = 2 * speed
     world:update(ball, ball.x, ball.y)
   end
 
@@ -111,39 +165,41 @@ function love.update(dt)
     local min = 0
     local max = height - player.height
 
-    local goal_y;
     if player.controls == 'controller' and joystick_1 then
-      goal_y = player.y + paddle_speed * dt * joystick_1:getGamepadAxis("lefty")
+      player.dy = paddle_speed * joystick_1:getGamepadAxis("lefty")
     elseif player.controls == 'controller_2' and joystick_2 then
-      goal_y = player.y + paddle_speed * dt * joystick_2:getGamepadAxis("lefty")
+      player.dy = paddle_speed * joystick_2:getGamepadAxis("lefty")
     elseif player.controls == 'arrow_keys' then
       if love.keyboard.isDown('up') then
-        goal_y = player.y - keyboard_speed * dt
+        player.dy = -keyboard_speed
       elseif love.keyboard.isDown('down') then
-        goal_y = player.y + keyboard_speed * dt
+        player.dy = keyboard_speed
+      else
+        player.dy = 0
       end
     elseif player.controls == 'wasd' then
       if love.keyboard.isDown('w') then
-        goal_y = player.y - keyboard_speed * dt
+        player.dy = -keyboard_speed
       elseif love.keyboard.isDown('s') then
-        goal_y = player.y + keyboard_speed * dt
+        player.dy = keyboard_speed
+      else
+        player.dy = 0
       end
     elseif player.controls == 'mouse' then
-      goal_y = love.mouse.getY()
+      player.dy = (love.mouse.getY() - player.y) / dt
     else
       print('Warning: controls "' .. player.controls .. '" not valid or input device not connected')
     end
 
-    if goal_y then
-      goal_y = clamp(goal_y, min, max)
-      local actualX, actualY, cols, len = world:move(player, player.x, goal_y)
-      player.y = actualY
+    local goal_y = player.y + player.dy * dt
+    goal_y = clamp(goal_y, min, max)
+    local actualX, actualY, cols, len = world:move(player, player.x, goal_y)
+    player.y = actualY
 
-      -- not sure if this is necessary, but it seems like a healthy precaution
-      if clamp(actualY, min, max) ~= actualY then
-        player.y = clamp(actualY, min, max)
-        world:update(player, player.x, player.y)
-      end
+    -- not sure if this is necessary, but it seems like a healthy precaution
+    if clamp(actualY, min, max) ~= actualY then
+      player.y = clamp(actualY, min, max)
+      world:update(player, player.x, player.y)
     end
   end
 end
@@ -151,6 +207,12 @@ end
 function love.draw()
   for i, player in ipairs(players) do
     love.graphics.rectangle("fill", player.x, player.y, player.width, player.height)
+  end
+  for i, brick in ipairs(bricks) do
+    if brick ~= 0 then
+      local x, y = getBrickXY(i)
+      love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height)
+    end
   end
   love.graphics.rectangle("fill", ball.x, ball.y, ball_size, ball_size)
   love.graphics.print(players[1].score, padding, height + 5)
