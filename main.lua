@@ -73,7 +73,6 @@ function love.update(dt)
   ball.y = actualY
   if #cols > 0 then
     local norm = cols[1].normal
-      print(norm.x, norm.y)
       if norm.x == 1 or norm.x == -1 then
         ball.dx = -ball.dx
       end
