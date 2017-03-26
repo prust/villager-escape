@@ -1,11 +1,11 @@
 local bump = require 'bump'
 
-padding = 20
-ball_size = 10
+padding = 30
+ball_size = 15
 speed = 100
 paddle_speed = 500
 keyboard_speed = 500
-hud_height = 50
+hud_height = 100
 players = {}
 
 local ballBumpFilter = function(item, other)
@@ -13,6 +13,8 @@ local ballBumpFilter = function(item, other)
 end
 
 function love.load()
+  love.graphics.setBackgroundColor(255, 244, 204)
+  love.graphics.setColor(174, 115, 210)
   love.window.setFullscreen(true)
   width, height = love.graphics.getDimensions()
   height = height - hud_height
@@ -21,7 +23,7 @@ function love.load()
   local player_1 = {
     x = padding,
     y = height / 2,
-    width = 5,
+    width = 10,
     height = 100,
     score = 0,
     controls = 'wasd'
@@ -29,9 +31,9 @@ function love.load()
   table.insert(players, player_1)
 
   local player_2 = {
-    x = width - padding - 5, -- paddle_width
+    x = width - padding - 10, -- paddle_width
     y = height / 2,
-    width = 5,
+    width = 10,
     height = 50,
     score = 0,
     controls = 'mouse' -- arrow_keys
@@ -40,6 +42,8 @@ function love.load()
 
   love.mouse.setY(height / 2)
   love.mouse.setVisible(false)
+
+  love.graphics.setFont(love.graphics.newFont(64))
 
   -- local player_3 = {
   --   x = padding * 2,
