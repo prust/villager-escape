@@ -9,8 +9,8 @@ hud_height = 100
 num_lives = 5
 is_paused = false
 players = {
-  { position = 'bottom', size = 0.2, controls = 'wasd' } --,
-  -- { position = 'right', size = 0.1, controls = 'arrow_keys' },
+  { position = 'bottom', size = 0.2, controls = 'wasd' },
+  { position = 'top', size = 0.2, controls = 'arrow_keys' }--,
   -- { position = 'left inner', size = 0.15, controls = 'mouse' },
   -- { position = 'right inner', size = 0.15, controls = 'controller' }
 }
@@ -27,7 +27,7 @@ brick_height = 20
 brick_width = 75
 brick_spacing = 3
 bricks_left_margin = 300
-bricks_top_margin = 300
+bricks_top_margin = 400
 
 function getBrickXY(ix)
   ix = ix - 1 -- b/c Lua is 1-based
@@ -80,6 +80,10 @@ function love.load()
       player.orientation = 'horizontal'
       bottom_player = player
       player.y = height - padding - 10 -- paddle_height
+    elseif player.position == 'top' then
+      player.orientation = 'horizontal'
+      top_player = player
+      player.y = padding
     end
 
     if player.orientation == 'vertical' then
@@ -107,11 +111,12 @@ function love.load()
     end
   end
 
-  -- add invisible walls
-  local top_wall = {x = 0, y = 0}
-  world:add(top_wall, 0,0, width, 1)
+  -- add invisible walls, in absence of players
+  if not top_player then
+    local top_wall = {x = 0, y = 0}
+    world:add(top_wall, 0,0, width, 1)
+  end
 
-  -- in the absence of players, add invisible walls
   if not right_player then
     local right_wall = { x = width, y = 0 }
     world:add(right_wall, width,0, 1, height)
@@ -205,6 +210,14 @@ function love.update(dt)
   elseif ball.y > height and bottom_player then
     bottom_player.lives = bottom_player.lives - 1
     if bottom_player.lives == 0 then
+      is_paused = true
+    else
+      ball.y = height / 2
+      ball.dx = 2 * speed
+    end
+  elseif ball.y < 0 and top_player then
+    top_player.lives = top_player.lives - 1
+    if top_player.lives == 0 then
       is_paused = true
     else
       ball.y = height / 2
