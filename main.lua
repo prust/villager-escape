@@ -6,7 +6,13 @@ speed = 100
 paddle_speed = 500
 keyboard_speed = 500
 hud_height = 100
-players = {}
+players = {
+  { position = 'left', size = 0.2, controls = 'wasd' } --,
+  -- { position = 'right', size = 0.1, controls = 'arrow_keys' },
+  -- { position = 'left inner', size = 0.15, controls = 'mouse' },
+  -- { position = 'right inner', size = 0.15, controls = 'controller' }
+}
+
 bricks = {
   0, 0, 0, 1, 1, 1, 0, 0, 0,
   0, 0, 0, 1, 1, 1, 0, 0, 0,
@@ -40,54 +46,36 @@ function love.load()
   height = height - hud_height
   world = bump.newWorld()
 
-  local player_1 = {
-    x = padding,
-    y = height / 2,
-    width = 10,
-    height = 200,
-    score = 0,
-    controls = 'controller_2',
-    item_type = 'paddle'
-  }
-  table.insert(players, player_1)
-
-  local player_2 = {
-    x = width - padding - 10, -- paddle_width
-    y = height / 2,
-    width = 10,
-    height = 150,
-    score = 0,
-    controls = 'controller', -- arrow_keys
-    item_type = 'paddle'
-  }
-  table.insert(players, player_2)
-
   love.mouse.setY(height / 2)
   love.mouse.setVisible(false)
 
   love.graphics.setFont(love.graphics.newFont(64))
 
-  local player_3 = {
-    x = padding * 2,
-    y = height / 2,
-    width = 10,
-    height = 150,
-    controls = 'mouse',
-    item_type = 'paddle'
-  }
-  table.insert(players, player_3)
-
-  local player_4 = {
-    x = width - padding * 2,
-    y = height / 2,
-    width = 10,
-    height = 100,
-    controls = 'arrow_keys',
-    item_type = 'paddle'
-  }
-  table.insert(players, player_4)
-
   for i, player in ipairs(players) do
+    player.item_type = 'paddle'
+    player.score = 0
+
+    if player.position == 'left' then
+      player.orientation = 'vertical'
+      player.x = padding
+    elseif player.position == 'right' then
+      player.orientation = 'vertical'
+      player.x = width - padding - 10 -- paddle_width
+    elseif player.position == 'left inner' then
+      player.orientation = 'vertical'
+      player.x = padding * 2
+    elseif player.position == 'right inner' then
+      player.orientation = 'vertical'
+      player.x = width - (padding +10) * 2
+    end
+
+    if player.orientation == 'vertical' then
+      player.y = height / 2
+      player.width = 10
+      player.height = player.size * height
+      player.dy = 0
+    end
+
     world:add(player, player.x, player.y, player.width, player.height)
   end
 
@@ -106,6 +94,18 @@ function love.load()
   local bottom_wall = {x = 0, y = height}
   world:add(top_wall, 0,0, width, 1)
   world:add(bottom_wall, 0,height, width, 1)
+
+  -- if there is no 2nd player, add right wall
+  local is_right_player = false
+  for i, player in ipairs(players) do
+    if player.position == 'right' then
+      is_right_player = true
+    end
+  end
+  if not is_right_player then
+    local right_wall = { x = width, y = 0 }
+    world:add(right_wall, width,0, 1, height)
+  end
 
   ball = {
     x = width/2,
@@ -151,7 +151,9 @@ function love.update(dt)
   -- someone lost/won, start over
   if ball.x < 0 or ball.x > width then
     if ball.x < 0 then
-      players[2].score = players[2].score + 1
+      if players[2] then
+        players[2].score = players[2].score + 1
+      end if
     else
       players[1].score = players[1].score + 1
     end
@@ -216,7 +218,9 @@ function love.draw()
   end
   love.graphics.rectangle("fill", ball.x, ball.y, ball_size, ball_size)
   love.graphics.print(players[1].score, padding, height + 5)
-  love.graphics.print(players[2].score, width - padding - 50, height + 5)
+  if players[2] then
+    love.graphics.print(players[2].score, width - padding - 50, height + 5)
+  end
 end
 
 function love.keyreleased(key)
