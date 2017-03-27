@@ -14,6 +14,7 @@ players = {
   -- { position = 'left inner', size = 0.15, controls = 'mouse' },
   -- { position = 'right inner', size = 0.15, controls = 'controller' }
 }
+last_player = nil
 
 bricks = {
   0, 0, 0, 1, 1, 1, 0, 0, 0,
@@ -168,6 +169,9 @@ function love.update(dt)
       local brick = cols[1].other
       world:remove(brick)
       bricks[brick.ix] = 0
+      if last_player then
+        last_player.score = last_player.score + 1
+      end
     end
 
     -- change ball direction if it bounces on anything
@@ -182,6 +186,7 @@ function love.update(dt)
       -- the paddle's vertical speed affects the ball's vert speed
       if cols[1].other.item_type == 'paddle' then
         local paddle = cols[1].other
+        last_player = paddle
         if paddle.orientation == 'vertical' then
           ball.dy = clamp(ball.dy + paddle.dy, -6 * speed, 6 * speed)
         else
@@ -312,9 +317,9 @@ function love.draw()
     end
   end
   love.graphics.rectangle("fill", ball.x, ball.y, ball_size, ball_size)
-  love.graphics.print(players[1].lives, padding, height + 5)
+  love.graphics.print(players[1].lives .. ' / ' .. players[1].score, padding, height + 5)
   if players[2] then
-    love.graphics.print(players[2].lives, width - padding - 50, height + 5)
+    love.graphics.print(players[2].lives .. ' / ' .. players[2].score, width - padding - 150, height + 5)
   end
 end
 
