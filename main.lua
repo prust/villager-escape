@@ -68,12 +68,10 @@ function love.load()
 
   -- add bricks
   local num_bricks = num_h_bricks * num_w_bricks
-  print("num-w-bricks: ", num_w_bricks)
   for i = 1, num_bricks do
     local ix = i - 1 -- b/c Lua is 1-based
     local brick_y = math.floor(ix / num_w_bricks)
     local brick_x = ix % num_w_bricks
-    print("brick-x: ", brick_x)
     local is_edge = brick_x == 0 or brick_y == 0 or brick_x == (num_w_bricks - 1) or brick_y == (num_h_bricks - 1)
     
     if not is_edge and math.random() > 0.6 then
@@ -186,6 +184,39 @@ function love.update(dt)
 
     local goal_x = clamp(player.x + player.dx * dt, min_x, max_x)
     local goal_y = clamp(player.y + player.dy * dt, min_y, max_y)
+
+    -- if the player's pushing up against a grid edge (presumably against a block)
+    if (player.dx < 0 and (player.x % brick_width) == 0) or (player.dx > 0 and ((player.x + player.width) % brick_width == 0)) then
+      -- and the grid in the other dimension is between y and goal_y
+      if math.floor(player.y / brick_height) ~= math.floor(goal_y/ brick_height) then
+        -- then align to the grid edge
+        local new_goal_y
+        if goal_y > player.y then
+          new_goal_y = math.floor(goal_y / brick_height) * brick_height
+        else
+          new_goal_y = math.ceil(goal_y / brick_height) * brick_height
+        end
+
+        if new_goal_y ~= player.y then
+          goal_y = new_goal_y
+        end
+      end
+    elseif (player.dy < 0 and (player.y % brick_height) == 0) or (player.dy > 0 and ((player.y + player.height) % brick_height == 0)) then
+      -- and the grid in the other dimension is between x and goal_x
+      if math.floor(player.x / brick_width) ~= math.floor(goal_x/ brick_width) then
+        -- then align to the grid edge
+        local new_goal_x
+        if goal_x > player.x then
+          new_goal_x = math.floor(goal_x / brick_width) * brick_width
+        else
+          new_goal_x = math.ceil(goal_x / brick_width) * brick_width
+        end
+
+        if new_goal_x ~= player.x then
+          goal_x = new_goal_x
+        end
+      end
+    end
 
     actual_x, actual_y, cols, len = world:move(player, goal_x, goal_y)
     player.x = actual_x
