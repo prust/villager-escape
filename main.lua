@@ -29,7 +29,9 @@ down_right = {type = "sign", dir = "down-right"}
 up_left = {type = "sign", dir = "up-left"}
 up_right = {type = "sign", dir = "up-right"}
 emerald = {type = "collectible", width = 20, height = 30}
+emeralds = {}
 door = {type = "object", width = 50, height = 10}
+doors = {}
 door_is_open = false
 skeleton = {}
 
@@ -152,14 +154,14 @@ function love.load()
       world:add(sign, x, y, brick_width, brick_height)
       bricks[i] = 0
     elseif bricks[i] ~= 0 and bricks[i].type == "collectible" then
-      emerald.x = x + 15
-      emerald.y = y + 10
-      world:add(emerald, emerald.x, emerald.y, emerald.width, emerald.height)
+      local new_emerald = {x = x + 15, y = y + 10, width = emerald.width, height = emerald.height, type="collectible", gem="emerald"}
+      table.insert(emeralds, new_emerald)
+      world:add(new_emerald, new_emerald.x, new_emerald.y, new_emerald.width, new_emerald.height)
       bricks[i] = 0
     elseif bricks[i] ~= 0 and bricks[i].type == "object" then
-      door.x = x
-      door.y = y
-      world:add(door, door.x, door.y, door.width, door.height)
+      local new_door = {x = x, y = y, width = door.width, height = door.height, type = door.type}
+      table.insert(doors, new_door)
+      world:add(new_door, new_door.x, new_door.y, new_door.width, new_door.height)
       bricks[i] = 0
     else
       bricks[i] = 0
@@ -297,10 +299,10 @@ function love.update(dt)
     -- determine if player got AI flag
     for i, col in ipairs(cols) do
       if col.other.type == 'collectible' then
-        emerald = nil
+        remove(emeralds, col.other)
         door_is_open = true
-        door.width = 10
-        door.height = 50
+        col.other.width = 10
+        col.other.height = 50
       elseif col.other == zombie then
         death()
       end
@@ -354,6 +356,15 @@ function love.update(dt)
         zombie.dx = -keyboard_speed
         zombie.dy = keyboard_speed
       end
+    end
+  end
+end
+
+function remove(tbl, obj)
+  for i, object in ipairs(tbl) do
+    if object == obj then
+      table.remove(tbl, i)
+      return
     end
   end
 end
@@ -426,7 +437,7 @@ function love.draw()
 
   -- draw collectibles
   love.graphics.setColor(emerald_color)
-  if emerald then
+  for i, emerald in ipairs(emeralds) do
     love.graphics.rectangle("fill", emerald.x - viewport_x, emerald.y - viewport_y, emerald.width, emerald.height, 10)
     love.graphics.rectangle("line", emerald.x - viewport_x, emerald.y - viewport_y, emerald.width, emerald.height, 10)
     --love.graphics.polygon('fill', 100,100, 200, 100, 150, 200)
@@ -434,10 +445,12 @@ function love.draw()
 
   -- draw other objects
   love.graphics.setColor(door_color)
-  if door_is_open then
-    love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
-  else
-    love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
+  for i, door in ipairs(doors) do
+    if door_is_open then
+      love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
+    else
+      love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
+    end
   end
 
   -- draw bricks
@@ -453,11 +466,7 @@ function love.draw()
 
   -- print lives/stats in HUD
   love.graphics.setColor(player_color)
-  local num_emeralds = 0
-  if emerald == nil then
-    num_emeralds = 1
-  end
-  love.graphics.print(num_emeralds .. ' / 3', padding, screen_height + 5)
+  love.graphics.print(#emeralds .. ' / 3', padding, screen_height + 5)
 end
 
 function love.keyreleased(key)
