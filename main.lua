@@ -13,6 +13,7 @@ player_color = {242, 186, 136}
 zombie_color = {59, 143, 77}
 emerald_color = {45, 187, 58}
 door_color = {152, 102, 15,}
+skeleton_color = {160, 150, 160}
 
 flag_size = 10
 flag_offset = 20
