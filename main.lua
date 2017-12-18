@@ -1,32 +1,77 @@
 local bump = require 'bump'
 
 padding = 30
--- ball_size = 15
-speed = 100
 paddle_speed = 500
-keyboard_speed = 500
+keyboard_speed = 300
 hud_height = 100
 num_lives = 5
 is_paused = false
 viewport_x = 0
 viewport_y = 0
-brick_color = {174, 115, 210}
-ai_flag_color = {217, 65, 65}
-player_color = {255, 211, 59}
+brick_color = {151, 142, 156}
+player_color = {242, 186, 136}
+zombie_color = {59, 143, 77}
+emerald_color = {45, 187, 58}
+door_color = {152, 102, 15,}
 
 flag_size = 10
 flag_offset = 20
 
 -- other controls: 'mouse', 'controller'
-players = {
-  { position = 'bottom', x = padding, y = padding + 200, controls = 'wasd' },
-  { position = 'top', x = padding, y = padding, controls = 'arrow_keys' }
-}
+player = {controls = 'arrow_keys'}
+players = { player }
+wall = {}
+zombie = {width = 40, height = 40, dx = keyboard_speed, dy = 0}
+down = {type = "sign", dir = "down"}
+down_left = {type = "sign", dir = "down-left"}
+down_right = {type = "sign", dir = "down-right"}
+up_left = {type = "sign", dir = "up-left"}
+up_right = {type = "sign", dir = "up-right"}
+emerald = {type = "collectible", width = 20, height = 30}
+door = {type = "object", width = 50, height = 10}
+door_is_open = false
 
-bricks = {}
-num_h_bricks = 20
-num_w_bricks = 50
-brick_height = 60
+local signFilter = function(item, other)
+  if other.type == 'sign' then
+    return 'cross'
+  elseif other.type == 'collectible' then
+    return 'cross'
+  elseif other.type == 'object' then
+    if door_is_open then
+      return 'cross'
+    else
+      return 'slide'
+    end
+  else
+    return 'slide'
+  end
+end
+
+local Z = zombie
+local W = wall
+local P = player
+local D = down
+local DR = down_right
+local DL = down_left
+local UL = up_left
+local UR = up_right
+local E = emerald
+local DO = door
+bricks = {
+  0, W, W, W, W, W, W, W, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  W, W, 0, 0, Z, 0, DR,W, W, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  W, UR,0, W, W, W, 0, 0, W, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+  W, 0, W, 0, 0, 0, W, 0, W, W, W, W, W, W, W, W, W, 0,
+  W, E, W, 0, P, 0, 0, D, 0, 0, 0, 0, 0, 0, 0, 0, 0, W,
+  W, 0, W, 0, 0, 0, W, 0, W, W, W, W, W, W, DO,W, W, 0,
+  W, 0, 0, W, W, W, 0, DL,W, 0, 0, 0, W, 0, 0, W, 0, 0,
+  W, W, UL,0, 0, 0, 0, W, W, 0, 0, 0, 0, W, 0, 0, W, 0,
+  0, W, W, W, W, W, W, W, 0, 0, 0, 0, W, 0, 0, W, 0, 0
+}
+num_h_bricks = 9
+num_w_bricks = 18
+
+brick_height = 50
 brick_width = 50
 brick_spacing = 0
 bricks_left_margin = 0
@@ -68,47 +113,46 @@ function love.load()
 
   love.graphics.setFont(love.graphics.newFont(64))
 
-  for i, player in ipairs(players) do
-    player.item_type = 'paddle'
-    player.score = 0
-    player.lives = num_lives
-
-    player.height = 60
-    player.width = 50
-    player.dx = 0
-    player.dy = 0
-
-    world:add(player, player.x, player.y, player.width, player.height)
-  end
-
-  -- add flags
-  ai_flag = {item_type = 'ai_flag', brick_x = math.random(num_w_bricks), brick_y = math.random(num_h_bricks)}
-  ai_flag.x = ai_flag.brick_x * brick_width + flag_offset
-  ai_flag.y = ai_flag.brick_y * brick_height + flag_offset
-  ai_flag.width = flag_size
-  ai_flag.height = flag_size
-  world:add(ai_flag, ai_flag.x, ai_flag.y, ai_flag.width, ai_flag.height)
-
-  player_flag = {item_type = 'player_flag', brick_x = math.random(num_w_bricks), brick_y = math.random(num_h_bricks)}
-  player_flag.x = player_flag.brick_x * brick_width + flag_offset
-  player_flag.y = player_flag.brick_y * brick_height + flag_offset
-  player_flag.width = flag_size
-  player_flag.height = flag_size
-  world:add(player_flag, player_flag.x, player_flag.y, player_flag.width, player_flag.height)  
-
   -- add bricks
   local num_bricks = num_h_bricks * num_w_bricks
   for i = 1, num_bricks do
-    local ix = i - 1 -- b/c Lua is 1-based
-    local brick_y = math.floor(ix / num_w_bricks)
-    local brick_x = ix % num_w_bricks
-    local is_edge = brick_x == 0 or brick_y == 0 or brick_x == (num_w_bricks - 1) or brick_y == (num_h_bricks - 1)
-    
-    if not is_edge and math.random() > 0.6 and (brick_x ~= ai_flag.brick_x or brick_y ~= ai_flag.brick_y) then
-      local x, y = getBrickXY(i)
+    local x, y = getBrickXY(i)
+    if bricks[i] == wall then
       bricks[i] = {item_type = 'brick', brick_type = brick, ix = i, x = x, y = y, width = brick_width, height = brick_height}
       local brick = bricks[i]
       world:add(brick, brick.x, brick.y, brick.width, brick.height)
+    elseif bricks[i] == player then
+      player.x = x
+      player.y = y
+      player.score = 0
+      player.lives = num_lives
+
+      player.height = 40
+      player.width = 40
+      player.dx = 0
+      player.dy = 0
+
+      world:add(player, player.x, player.y, player.width, player.height)
+      bricks[i] = 0
+    elseif bricks[i] == zombie then
+      zombie.x = x
+      zombie.y = y
+      world:add(zombie, zombie.x, zombie.y, zombie.width, zombie.height)
+      bricks[i] = 0
+    elseif bricks[i] ~= 0 and bricks[i].type == "sign" then
+      local sign = {type = "sign", dir = bricks[i].dir}
+      world:add(sign, x, y, brick_width, brick_height)
+      bricks[i] = 0
+    elseif bricks[i] ~= 0 and bricks[i].type == "collectible" then
+      emerald.x = x + 15
+      emerald.y = y + 10
+      world:add(emerald, emerald.x, emerald.y, emerald.width, emerald.height)
+      bricks[i] = 0
+    elseif bricks[i] ~= 0 and bricks[i].type == "object" then
+      door.x = x
+      door.y = y
+      world:add(door, door.x, door.y, door.width, door.height)
+      bricks[i] = 0
     else
       bricks[i] = 0
     end
@@ -176,6 +220,10 @@ function love.update(dt)
         player.dx = -keyboard_speed
       elseif love.keyboard.isDown('right') then
         player.dx = keyboard_speed
+      elseif love.keyboard.isDown('a') then
+        player.dx = -keyboard_speed
+      elseif love.keyboard.isDown('d') then
+        player.dx = keyboard_speed
       else
         player.dx = 0
       end
@@ -184,19 +232,7 @@ function love.update(dt)
         player.dy = -keyboard_speed
       elseif love.keyboard.isDown('down') then
         player.dy = keyboard_speed
-      else
-        player.dy = 0
-      end
-    elseif player.controls == 'wasd' then
-      if love.keyboard.isDown('a') then
-        player.dx = -keyboard_speed
-      elseif love.keyboard.isDown('d') then
-        player.dx = keyboard_speed
-      else
-        player.dx = 0
-      end
-      
-      if love.keyboard.isDown('w') then
+      elseif love.keyboard.isDown('w') then
         player.dy = -keyboard_speed
       elseif love.keyboard.isDown('s') then
         player.dy = keyboard_speed
@@ -246,15 +282,19 @@ function love.update(dt)
       end
     end
 
-    actual_x, actual_y, cols, len = world:move(player, goal_x, goal_y)
+    actual_x, actual_y, cols, len = world:move(player, goal_x, goal_y, signFilter)
     player.x = actual_x
     player.y = actual_y
 
     -- determine if player got AI flag
-    if #cols > 0 then
-      if cols[1].other.item_type == 'ai_flag' then
-        is_paused = true
-        love.window.showMessageBox("You Won!", "Congratulations, you won the game!")
+    for i, col in ipairs(cols) do
+      if col.other.type == 'collectible' then
+        emerald = nil
+        door_is_open = true
+        door.width = 10
+        door.height = 50
+      elseif col.other == zombie then
+        death()
       end
     end
 
@@ -282,65 +322,44 @@ function love.update(dt)
     end
   end
 
+  actual_x, actual_y, cols, len = world:move(zombie, zombie.x + zombie.dx * dt, zombie.y + zombie.dy * dt, signFilter)
+  zombie.x = actual_x
+  zombie.y = actual_y
 
-  -- if both players are pushing up against grid edges in opposite directions
-  -- check if there are solid bricks between them; if there are, squish them all
-  if isPushing(players[1], 'x') and isPushing(players[2], 'x') and players[1].dx ~= players[2].dx then
-    for i, brick_y1 in ipairs(getGridYs(players[1])) do
-      for i2, brick_y2 in ipairs(getGridYs(players[1])) do
-        if brick_y1 == brick_y2 then
-          local brick_x1 = getGridX(player[1])
-          local brick_x2 = getGridX(player[2])
-
-          -- the ...BricksBetween() functions are inclusive of the edges
-          -- but we don't want to be, so we increment/decrement
-          if (player[1].dx > 0) then
-            brick_x1 = brick_x1 + 1
-            brick_x2 = brick_x2 - 1
-          else
-            brick_x1 = brick_x1 - 1
-            brick_x2 = brick_x2 + 1
-          end
-
-          if solidBricksBetween(brick_x1, brick_y1, brick_x2, brick_y2) then
-            destroyBricksBetween(brick_x1, brick_y1, brick_x2, brick_y2)
-          end
-        end
+  for i, col in ipairs(cols) do
+    if col.other == player then
+      death()
+    elseif col.other.type == "sign" then
+      if col.other.dir == "down" then
+        zombie.dx = 0
+        zombie.dy = keyboard_speed
+      elseif col.other.dir == "up-right" then
+        zombie.dx = keyboard_speed
+        zombie.dy = -keyboard_speed
+      elseif col.other.dir == "up-left" then
+        zombie.dx = -keyboard_speed
+        zombie.dy = -keyboard_speed
+      elseif col.other.dir == "down-right" then
+        zombie.dx = keyboard_speed
+        zombie.dy = keyboard_speed
+      elseif col.other.dir == "down-left" then
+        zombie.dx = -keyboard_speed
+        zombie.dy = keyboard_speed
       end
     end
   end
+end
 
-  if isPushing(players[1], 'y') and isPushing(players[2], 'y') and players[1].dy ~= players[2].dy then
-    for i, brick_x1 in ipairs(getGridXs(players[1])) do
-      for i2, brick_x2 in ipairs(getGridXs(players[1])) do
-        if brick_x1 == brick_x2 then
-          local brick_y1 = getGridY(player[1])
-          local brick_y2 = getGridY(player[2])
-
-          -- the ...BricksBetween() functions are inclusive of the edges
-          -- but we don't want to be, so we increment/decrement
-          if (player[1].dy > 0) then
-            brick_y1 = brick_y1 + 1
-            brick_y2 = brick_y2 - 1
-          else
-            brick_y1 = brick_y1 - 1
-            brick_y2 = brick_y2 + 1
-          end
-
-          if solidBricksBetween(brick_x1, brick_y1, brick_x2, brick_y2) then
-            destroyBricksBetween(brick_x1, brick_y1, brick_x2, brick_y2)
-          end
-        end
-      end
-    end
-  end
+function death()
+  is_paused = true
+  love.window.showMessageBox("You Died!", "Sorry buddy, you failed.")
 end
 
 -- if player is pushing up against a grid edge (& presumably a brick)
 function isPushing(player, dimension)
   if dimension == 'x' then
     return (player.dx < 0 and (player.x % brick_width) == 0) or (player.dx > 0 and ((player.x + player.width) % brick_width == 0))
-  else if dimension == 'y' then
+  elseif dimension == 'y' then
     return (player.dy < 0 and (player.y % brick_height) == 0) or (player.dy > 0 and ((player.y + player.height) % brick_height == 0))
   end
 end
@@ -385,55 +404,32 @@ function getGridY(player)
   return ys[1]
 end
 
-function solidBricksBetween(grid_x1, grid_y1, grid_x2, grid_y2)
-  local step_x, step_y
-  if grid_x2 > grid_x1 then
-    step_x = 1
-  else
-    step_x = -1
-  end
-  if grid_y2 > grid_y1 then
-    step_y = 1
-  else
-    step_y = -1
-  end
-
-  for x = grid_x1, grid_x2, step_x do
-    for y = grid_y1, grid_y2, step_y do
-      if getBrick(x, y) == 0 then
-        return false
-      end
-    end
-  end
-  return true
-end
-
-function destroyBricksBetween(grid_x1, grid_y1, grid_x2, grid_y2)
-  local step_x, step_y
-  if grid_x2 > grid_x1 then
-    step_x = 1
-  else
-    step_x = -1
-  end
-  if grid_y2 > grid_y1 then
-    step_y = 1
-  else
-    step_y = -1
-  end
-
-  for x = grid_x1, grid_x2, step_x do
-    for y = grid_y1, grid_y2, step_y do
-      bricks[getBrickIndex(x, y)] = 0
-    end
-  end
-end
-
 function love.draw()
   -- draw players
   love.graphics.setColor(player_color)
   for i, player in ipairs(players) do
     love.graphics.rectangle("fill", player.x - viewport_x, player.y - viewport_y, player.width, player.height, 10)
     love.graphics.rectangle("line", player.x - viewport_x, player.y - viewport_y, player.width, player.height, 10)
+  end
+
+  love.graphics.setColor(zombie_color)
+  love.graphics.rectangle("fill", zombie.x - viewport_x, zombie.y - viewport_y, zombie.width, zombie.height, 10)
+  love.graphics.rectangle("line", zombie.x - viewport_x, zombie.y - viewport_y, zombie.width, zombie.height, 10)
+
+  -- draw collectibles
+  love.graphics.setColor(emerald_color)
+  if emerald then
+    love.graphics.rectangle("fill", emerald.x - viewport_x, emerald.y - viewport_y, emerald.width, emerald.height, 10)
+    love.graphics.rectangle("line", emerald.x - viewport_x, emerald.y - viewport_y, emerald.width, emerald.height, 10)
+    --love.graphics.polygon('fill', 100,100, 200, 100, 150, 200)
+  end
+
+  -- draw other objects
+  love.graphics.setColor(door_color)
+  if door_is_open then
+    love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
+  else
+    love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
   end
 
   -- draw bricks
@@ -446,18 +442,14 @@ function love.draw()
   end
 
   -- draw bullets & flags
-  love.graphics.setColor(ai_flag_color)
-  -- love.graphics.rectangle("fill", ball.x - viewport_x, ball.y - viewport_y, ball_size, ball_size)
-  love.graphics.rectangle("fill", ai_flag.x - viewport_x, ai_flag.y - viewport_y, ai_flag.width, ai_flag.height, 5)
-  love.graphics.setColor(player_color)
-  love.graphics.rectangle("fill", player_flag.x - viewport_x, player_flag.y - viewport_y, player_flag.width, player_flag.height, 5)
 
   -- print lives/stats in HUD
   love.graphics.setColor(player_color)
-  love.graphics.print(players[1].lives .. ' / ' .. players[1].score, padding, screen_height + 5)
-  if players[2] then
-    love.graphics.print(players[2].lives .. ' / ' .. players[2].score, screen_width - padding - 150, screen_height + 5)
+  local num_emeralds = 0
+  if emerald == nil then
+    num_emeralds = 1
   end
+  love.graphics.print(num_emeralds .. ' / 3', padding, screen_height + 5)
 end
 
 function love.keyreleased(key)
