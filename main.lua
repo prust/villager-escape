@@ -299,13 +299,9 @@ function love.update(dt)
     for i, col in ipairs(cols) do
       if col.other.type == 'collectible' then
         -- if there are 2 emeralds left, open the 1st door, else open the 2nd door
-        local door
-        if #emeralds == 2 then
-          door = doors[2]
-        elseif #emeralds == 1 then
-          door = doors[1]
-        end
-        remove(emeralds, col.other)
+        local emerald_num = indexOf(emeralds, col.other)
+        local door = doors[emerald_num]
+        col.other.collected = true
 
         if door then
           door.width = 10
@@ -369,11 +365,10 @@ function love.update(dt)
   end
 end
 
-function remove(tbl, obj)
+function indexOf(tbl, obj)
   for i, object in ipairs(tbl) do
     if object == obj then
-      table.remove(tbl, i)
-      return
+      return i
     end
   end
 end
@@ -447,8 +442,10 @@ function love.draw()
   -- draw collectibles
   love.graphics.setColor(emerald_color)
   for i, emerald in ipairs(emeralds) do
-    love.graphics.rectangle("fill", emerald.x - viewport_x, emerald.y - viewport_y, emerald.width, emerald.height, 10)
-    love.graphics.rectangle("line", emerald.x - viewport_x, emerald.y - viewport_y, emerald.width, emerald.height, 10)
+    if not emerald.collected then
+      love.graphics.rectangle("fill", emerald.x - viewport_x, emerald.y - viewport_y, emerald.width, emerald.height, 10)
+      love.graphics.rectangle("line", emerald.x - viewport_x, emerald.y - viewport_y, emerald.width, emerald.height, 10)
+    end
     --love.graphics.polygon('fill', 100,100, 200, 100, 150, 200)
   end
 
@@ -471,7 +468,13 @@ function love.draw()
 
   -- print lives/stats in HUD
   love.graphics.setColor(player_color)
-  love.graphics.print(#emeralds .. ' / 3', padding, screen_height + 5)
+  local num_emeralds_collected = 0
+  for i, emerald in ipairs(emeralds) do
+    if emerald.collected then
+      num_emeralds_collected = num_emeralds_collected + 1
+    end
+  end
+  love.graphics.print(num_emeralds_collected .. ' / 3', padding, screen_height + 5)
 end
 
 function love.keyreleased(key)
