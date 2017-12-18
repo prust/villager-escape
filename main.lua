@@ -31,7 +31,6 @@ emerald = {type = "collectible", width = 20, height = 30}
 emeralds = {}
 door = {type = "object", width = 50, height = 10}
 doors = {}
-door_is_open = false
 skeleton = {}
 
 local signFilter = function(item, other)
@@ -40,7 +39,7 @@ local signFilter = function(item, other)
   elseif other.type == 'collectible' then
     return 'cross'
   elseif other.type == 'object' then
-    if door_is_open then
+    if other.is_open then
       return 'cross'
     else
       return 'slide'
@@ -298,10 +297,20 @@ function love.update(dt)
     -- determine if player got AI flag
     for i, col in ipairs(cols) do
       if col.other.type == 'collectible' then
+        -- if there are 2 emeralds left, open the 1st door, else open the 2nd door
+        local door
+        if #emeralds == 2 then
+          door = doors[2]
+        elseif #emeralds == 1 then
+          door = doors[1]
+        end
         remove(emeralds, col.other)
-        door_is_open = true
-        col.other.width = 10
-        col.other.height = 50
+
+        if door then
+          door.width = 10
+          door.height = 50
+          door.is_open = true
+        end
       elseif col.other == zombie then
         death()
       end
@@ -445,11 +454,7 @@ function love.draw()
   -- draw other objects
   love.graphics.setColor(door_color)
   for i, door in ipairs(doors) do
-    if door_is_open then
-      love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
-    else
-      love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
-    end
+    love.graphics.rectangle("fill", door.x - viewport_x, door.y - viewport_y, door.width, door.height)
   end
 
   -- draw bricks
