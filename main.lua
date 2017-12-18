@@ -30,6 +30,7 @@ up_right = {type = "sign", dir = "up-right"}
 emerald = {type = "collectible", width = 20, height = 30}
 door = {type = "object", width = 50, height = 10}
 door_is_open = false
+skeleton = {}
 
 local signFilter = function(item, other)
   if other.type == 'sign' then
@@ -57,6 +58,7 @@ local UL = up_left
 local UR = up_right
 local E = emerald
 local DO = door
+local S = skeleton
 bricks = {
   0, W, W, W, W, W, W, W, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   W, W, 0, 0, Z, 0, DR,W, W, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -64,12 +66,17 @@ bricks = {
   W, 0, W, 0, 0, 0, W, 0, W, W, W, W, W, W, W, W, W, 0,
   W, E, W, 0, P, 0, 0, D, 0, 0, 0, 0, 0, 0, 0, 0, 0, W,
   W, 0, W, 0, 0, 0, W, 0, W, W, W, W, W, W, DO,W, W, 0,
-  W, 0, 0, W, W, W, 0, DL,W, 0, 0, 0, W, 0, 0, W, 0, 0,
-  W, W, UL,0, 0, 0, 0, W, W, 0, 0, 0, 0, W, 0, 0, W, 0,
-  0, W, W, W, W, W, W, W, 0, 0, 0, 0, W, 0, 0, W, 0, 0
+  W, 0, 0, W, W, W, 0, DL,W, 0, 0, 0, W, 0, 0, W, W, W, 
+  W, W, UL,0, 0, 0, 0, W, W, 0, 0, 0, 0, W, 0, 0, DO,0,
+  0, W, W, W, W, W, W, W, 0, 0, 0, 0, W, 0, 0, W, W, W,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, W, 0, 0, W, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, W, E, W, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, W, W, 0, W, W, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, W, DR,S, 0, 0, DL,W,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, W, W, W, W, W, 0
 }
-num_h_bricks = 9
-num_w_bricks = 18
+num_h_bricks = 14
+num_w_bricks = #bricks / num_h_bricks
 
 brick_height = 50
 brick_width = 50
